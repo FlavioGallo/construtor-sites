@@ -1,0 +1,14 @@
+{
+  "name": "construtor-sites",
+  "description": "Sistema construtor de sites estilo Wix",
+  "type": "project",
+  "require": {
+    "php": ">=8.0"
+  },
+  "autoload": {
+    "classmap": [
+      "controllers/",
+      "models/"
+    ]
+  }
+}
