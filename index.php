@@ -1,15 +1,15 @@
 <?php
-// Definir caminho base
-define('BASE_PATH', dirname(__DIR__));
+// Definir caminho base absoluto
+$basePath = '/var/www/html';
 
 // Conexão com o banco
-$pdo = require __DIR__ . '/config/database.php';
+$pdo = require $basePath . '/config/database.php';
 
-// Incluir classes
-require_once __DIR__ . '/controllers/PageController.php';
-require_once __DIR__ . '/controllers/SiteController.php';
-require_once __DIR__ . '/models/PageModel.php';
-require_once __DIR__ . '/models/SiteModel.php';
+// Incluir classes com caminho absoluto
+require_once $basePath . '/controllers/PageController.php';
+require_once $basePath . '/controllers/SiteController.php';
+require_once $basePath . '/models/PageModel.php';
+require_once $basePath . '/models/SiteModel.php';
 
 // Pega a URL
 $uri = trim(parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH), '/');
@@ -31,7 +31,7 @@ if ($uri === 'editor' || $uri === 'editor/') {
 
 // 🎯 Rota: Página inicial da plataforma
 if ($uri === '' || $uri === 'index.php') {
-    include __DIR__ . '/views/landing_page.php';
+    include $basePath . '/views/landing_page.php';
     exit;
 }
 
