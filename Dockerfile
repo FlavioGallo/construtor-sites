@@ -1,22 +1,24 @@
 FROM php:8.2-fpm
 
-# Instalar Nginx
+# Instalar Nginx e utilitários
 RUN apt-get update && apt-get install -y nginx
 
 # Instalar extensões PHP
 RUN docker-php-ext-install pdo pdo_mysql
 
-# Copiar arquivos do projeto
+# Copiar arquivos
 COPY . /var/www/html/
 
-# Configurar permissões
+# Permissões
 RUN chown -R www-data:www-data /var/www/html/
+RUN chmod -R 755 /var/www/html/
 
-# Copiar configuração do Nginx
+# Copiar config do Nginx
 COPY nginx.conf /etc/nginx/sites-available/default
 
-# Expor porta 8080
+# Expor porta
 EXPOSE 8080
 
-# Iniciar PHP-FPM e Nginx
-CMD service php8.2-fpm start && nginx -g 'daemon off;'
+# Comando de inicialização
+CMD service php8.2-fpm start && \
+    nginx -g 'daemon off;'
