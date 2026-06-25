@@ -1,6 +1,6 @@
 FROM php:8.2-fpm
 
-# Instalar Nginx e utilitários
+# Instalar Nginx
 RUN apt-get update && apt-get install -y nginx
 
 # Instalar extensões PHP
@@ -19,6 +19,5 @@ COPY nginx.conf /etc/nginx/sites-available/default
 # Expor porta
 EXPOSE 8080
 
-# Comando de inicialização
-CMD service php8.2-fpm start && \
-    nginx -g 'daemon off;'
+# Iniciar PHP-FPM e Nginx corretamente
+CMD php-fpm & nginx -g 'daemon off;'
