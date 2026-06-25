@@ -4,11 +4,14 @@
 // Conexão com o banco
 $pdo = require __DIR__ . '/config/database.php';
 
+
 // Inclui as classes
 require_once __DIR__ . '/controllers/PageController.php';
 require_once __DIR__ . '/controllers/SiteController.php';
 require_once __DIR__ . '/models/PageModel.php';
 require_once __DIR__ . '/models/SiteModel.php';
+// Definir caminho base correto
+define('BASE_PATH', __DIR__);
 
 // Pega a URL
 $uri = trim(parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH), '/');
