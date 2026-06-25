@@ -1,19 +1,22 @@
 FROM php:8.2-apache
 
-# Instalar apenas extensões PHP
+# Instalar extensões PHP
 RUN docker-php-ext-install pdo pdo_mysql
 
-# Configurar Apache para porta 8080 (Railway)
-RUN echo "Listen 8080" > /etc/apache2/ports.conf && \
-    echo '<VirtualHost *:8080>' > /etc/apache2/sites-available/000-default.conf && \
-    echo '    DocumentRoot /var/www/html' >> /etc/apache2/sites-available/000-default.conf && \
-    echo '    <Directory /var/www/html>' >> /etc/apache2/sites-available/000-default.conf && \
-    echo '        AllowOverride All' >> /etc/apache2/sites-available/000-default.conf && \
-    echo '        Require all granted' >> /etc/apache2/sites-available/000-default.conf && \
-    echo '    </Directory>' >> /etc/apache2/sites-available/000-default.conf && \
-    echo '</VirtualHost>' >> /etc/apache2/sites-available/000-default.conf
+# Desabilitar TODOS os MPMs primeiro (isso resolve o erro!)
+RUN a2dismod mpm_event mpm_worker mpm_prefork 2>/dev/null || true
 
-# Copiar todos os arquivos
+# Habilitar APENAS um MPM
+RUN a2enmod mpm_prefork
+
+# Habilitar mod_rewrite
+RUN a2enmod rewrite
+
+# Configurar Apache para porta 8080
+RUN sed -i 's/Listen 80/Listen 8080/g' /etc/apache2/ports.conf
+RUN sed -i 's/:80>/:8080>/g' /etc/apache2/sites-available/000-default.conf
+
+# Copiar arquivos
 COPY . /var/www/html/
 
 # Permissões
