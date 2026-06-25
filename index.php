@@ -1,17 +1,15 @@
 <?php
-// 🚦 Roteador principal do sistema
+// Definir caminho base
+define('BASE_PATH', dirname(__DIR__));
 
 // Conexão com o banco
 $pdo = require __DIR__ . '/config/database.php';
 
-
-// Inclui as classes
+// Incluir classes
 require_once __DIR__ . '/controllers/PageController.php';
 require_once __DIR__ . '/controllers/SiteController.php';
 require_once __DIR__ . '/models/PageModel.php';
 require_once __DIR__ . '/models/SiteModel.php';
-// Definir caminho base correto
-define('BASE_PATH', __DIR__);
 
 // Pega a URL
 $uri = trim(parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH), '/');
@@ -27,7 +25,7 @@ if ($uri === 'api/save-elements') {
 // 🎯 Rota: Editor
 if ($uri === 'editor' || $uri === 'editor/') {
     $controller = new PageController($pdo);
-    $controller->editor(1); // ID da página (depois vem da sessão)
+    $controller->editor(1);
     exit;
 }
 
@@ -37,13 +35,12 @@ if ($uri === '' || $uri === 'index.php') {
     exit;
 }
 
-// 🎯 Rota: Renderizar site publicado (subdiretório: /meusite ou /meusite/sobre)
+// 🎯 Rota: Renderizar site publicado
 $pathParts = explode('/', $uri);
 $siteSlug = $pathParts[0] ?? null;
 $pageSlug = $pathParts[1] ?? 'home';
 
 if ($siteSlug) {
-    // Verifica se é subdomínio (meusite.plataforma.com)
     $hostParts = explode('.', $host);
     if (count($hostParts) >= 3 && $hostParts[0] !== 'www') {
         $siteSlug = $hostParts[0];
