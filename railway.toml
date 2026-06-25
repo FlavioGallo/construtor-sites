@@ -1,0 +1,6 @@
+[build]
+buildCommand = "composer dump-autoload --optimize"
+
+[deploy]
+[deploy.variables]
+RAILPACK_INSTALL_CMD = "composer install --no-scripts --no-interaction"
