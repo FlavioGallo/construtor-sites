@@ -1,57 +1,140 @@
 <?php
-// Definir caminho base absoluto
-$basePath = '/var/www/html';
+session_start();
 
-// Conexão com o banco
-$pdo = require $basePath . '/config/database.php';
+require_once __DIR__ . '/config/database.php';
+require_once __DIR__ . '/controllers/AuthController.php';
+require_once __DIR__ . '/controllers/PageController.php';
+require_once __DIR__ . '/controllers/SiteController.php';
 
-// Incluir classes com caminho absoluto
-require_once $basePath . '/controllers/PageController.php';
-require_once $basePath . '/controllers/SiteController.php';
-require_once $basePath . '/models/PageModel.php';
-require_once $basePath . '/models/SiteModel.php';
-
-// Pega a URL
+// Router simples
 $uri = trim(parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH), '/');
-$host = $_SERVER['HTTP_HOST'];
+$method = $_SERVER['REQUEST_METHOD'];
 
-// 🎯 Rota: API para salvar elementos
-if ($uri === 'api/save-elements') {
-    $controller = new PageController($pdo);
-    $controller->saveElements();
+// Rotas de API
+if (strpos($uri, 'api/') === 0) {
+    header('Content-Type: application/json');
+    
+    // Auth
+    if ($uri === 'api/auth/register' && $method === 'POST') {
+        $controller = new AuthController($pdo);
+        $controller->register();
+        exit;
+    }
+    
+    if ($uri === 'api/auth/login' && $method === 'POST') {
+        $controller = new AuthController($pdo);
+        $controller->login();
+        exit;
+    }
+    
+    if ($uri === 'api/auth/logout' && $method === 'POST') {
+        $controller = new AuthController($pdo);
+        $controller->logout();
+        exit;
+    }
+    
+    if ($uri === 'api/auth/check' && $method === 'GET') {
+        $controller = new AuthController($pdo);
+        $controller->check();
+        exit;
+    }
+    
+    // Sites
+    if ($uri === 'api/sites' && $method === 'GET') {
+        require_once __DIR__ . '/api/sites.php';
+        exit;
+    }
+    
+    if ($uri === 'api/sites' && $method === 'POST') {
+        require_once __DIR__ . '/api/sites.php';
+        exit;
+    }
+    
+    if (preg_match('/^api\/sites\/(\d+)$/', $uri, $matches) && $method === 'DELETE') {
+        $_GET['id'] = $matches[1];
+        require_once __DIR__ . '/api/sites.php';
+        exit;
+    }
+    
+    // Stats
+    if ($uri === 'api/stats' && $method === 'GET') {
+        require_once __DIR__ . '/api/stats.php';
+        exit;
+    }
+    
+    // Media
+    if ($uri === 'api/media' && $method === 'GET') {
+        require_once __DIR__ . '/api/media.php';
+        exit;
+    }
+    
+    if ($uri === 'api/media' && $method === 'POST') {
+        require_once __DIR__ . '/api/media.php';
+        exit;
+    }
+    
+    if (preg_match('/^api\/media\/(\d+)$/', $uri, $matches) && $method === 'DELETE') {
+        $_GET['id'] = $matches[1];
+        require_once __DIR__ . '/api/media.php';
+        exit;
+    }
+    
+    // Save elements
+    if ($uri === 'api/save-elements' && $method === 'POST') {
+        $controller = new PageController($pdo);
+        $controller->saveElements();
+        exit;
+    }
+    
+    http_response_code(404);
+    echo json_encode(['error' => 'Endpoint não encontrado']);
     exit;
 }
 
-// 🎯 Rota: Editor
-if ($uri === 'editor' || $uri === 'editor/') {
-    $controller = new PageController($pdo);
-    $controller->editor(1);
-    exit;
-}
-
-// 🎯 Rota: Página inicial da plataforma
+// Rotas de páginas
 if ($uri === '' || $uri === 'index.php') {
-    include $basePath . '/views/landing_page.php';
+    include __DIR__ . '/views/landing_page.php';
     exit;
 }
 
-// 🎯 Rota: Renderizar site publicado
+if ($uri === 'login') {
+    include __DIR__ . '/views/login.php';
+    exit;
+}
+
+if ($uri === 'register') {
+    include __DIR__ . '/views/register.php';
+    exit;
+}
+
+if ($uri === 'dashboard') {
+    include __DIR__ . '/views/dashboard.php';
+    exit;
+}
+
+if ($uri === 'media-library') {
+    include __DIR__ . '/views/media-library.php';
+    exit;
+}
+
+if ($uri === 'editor' || $uri === 'editor/') {
+    $pageId = $_GET['page'] ?? 1;
+    $controller = new PageController($pdo);
+    $controller->editor($pageId);
+    exit;
+}
+
+// Rota para visualizar site publicado
 $pathParts = explode('/', $uri);
 $siteSlug = $pathParts[0] ?? null;
 $pageSlug = $pathParts[1] ?? 'home';
 
 if ($siteSlug) {
-    $hostParts = explode('.', $host);
-    if (count($hostParts) >= 3 && $hostParts[0] !== 'www') {
-        $siteSlug = $hostParts[0];
-        $pageSlug = $pathParts[0] ?: 'home';
-    }
-
     $controller = new SiteController($pdo);
     $controller->view($siteSlug, $pageSlug);
     exit;
 }
 
-// Fallback
+// 404
 http_response_code(404);
 echo "Página não encontrada.";
