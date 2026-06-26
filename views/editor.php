@@ -137,7 +137,8 @@
             <h3>🖼️ Adicionar Imagem</h3>
             <input type="text" id="imageUrl" placeholder="Cole a URL da imagem aqui...">
             <p style="font-size: 12px; color: #666; margin-bottom: 15px;">
-                Dica: Use imagens do Imgur, Google Drive (link direto) ou qualquer URL pública
+                Dica: Use imagens do Imgur, Google Drive (link direto) ou qualquer URL pública.<br>
+                Deixe vazio para usar um placeholder.
             </p>
             <div class="modal-buttons">
                 <button class="btn-cancel" onclick="closeImageModal()">Cancelar</button>
@@ -156,7 +157,7 @@
                 return;
             }
             
-            createElement(type, type === 'image' ? '' : null);
+            createElement(type, null);
         }
         
         function openImageModal() {
@@ -171,12 +172,8 @@
         
         function confirmImage() {
             const url = document.getElementById('imageUrl').value.trim();
-            if (!url) {
-                alert('Por favor, digite uma URL!');
-                return;
-            }
             closeImageModal();
-            createElement('image', url);
+            createElement('image', url || null);
         }
         
         // Permitir Enter no input
@@ -217,11 +214,26 @@
                 el.style.height = '50px';
             } else if (type === 'image') {
                 const img = document.createElement('img');
-                img.src = imageUrl || 'https://placehold.co/200x150/4a90d9/white?text=Imagem';
+                
+                // Marcar se é URL customizada
+                if (imageUrl) {
+                    img.dataset.customUrl = 'true';
+                    img.src = imageUrl;
+                } else {
+                    img.src = 'https://placehold.co/200x150/4a90d9/white?text=Imagem';
+                }
+                
                 img.alt = 'imagem';
+                img.style.width = '100%';
+                img.style.height = '100%';
+                img.style.objectFit = 'cover';
                 img.onerror = () => {
-                    img.src = 'https://via.placeholder.com/200x150?text=URL+Inválida';
+                    // Fallback se a imagem falhar
+                    const width = Math.round(el.offsetWidth);
+                    const height = Math.round(el.offsetHeight);
+                    img.src = `https://placehold.co/${width}x${height}/cccccc/666666?text=URL+Inválida`;
                 };
+                
                 el.appendChild(img);
                 el.style.width = '200px';
                 el.style.height = '150px';
@@ -267,6 +279,16 @@
                         move(event) {
                             el.style.width = event.rect.width + 'px';
                             el.style.height = event.rect.height + 'px';
+                            
+                            // Atualizar placeholder da imagem quando redimensionar
+                            if (el.dataset.type === 'image') {
+                                const img = el.querySelector('img');
+                                if (img && !img.dataset.customUrl) {
+                                    const width = Math.round(event.rect.width);
+                                    const height = Math.round(event.rect.height);
+                                    img.src = `https://placehold.co/${width}x${height}/4a90d9/white?text=Imagem`;
+                                }
+                            }
                         }
                     }
                 });
