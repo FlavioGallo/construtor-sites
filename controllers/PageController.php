@@ -32,15 +32,37 @@ class PageController {
             $pageId = (int)$data['pageId'];
             $elements = $data['elements'];
             
-            // Criar página se não existir
-            $stmt = $this->pdo->prepare('INSERT IGNORE INTO pages (id, site_id, name, slug) VALUES (?, 1, "Página 1", "home")');
-            $stmt->execute([$pageId]);
+            // 1. Verificar se existe um site
+            $stmt = $this->pdo->query('SELECT id FROM sites LIMIT 1');
+            $site = $stmt->fetch();
             
-            // Deletar elementos antigos
+            if (!$site) {
+                // Criar site padrão se não existir
+                $this->pdo->exec('INSERT INTO sites (id, user_id, name, slug, is_published) VALUES (1, 1, "Meu Site", "meu-site", 1)');
+                $siteId = 1;
+            } else {
+                $siteId = $site['id'];
+            }
+            
+            // 2. Verificar/criar página
+            $stmt = $this->pdo->prepare('SELECT id FROM pages WHERE id = ?');
+            $stmt->execute([$pageId]);
+            $page = $stmt->fetch();
+            
+            if (!$page) {
+                // Criar página
+                $stmt = $this->pdo->prepare('
+                    INSERT INTO pages (id, site_id, name, slug) 
+                    VALUES (?, ?, "Página Inicial", "home")
+                ');
+                $stmt->execute([$pageId, $siteId]);
+            }
+            
+            // 3. Deletar elementos antigos
             $stmt = $this->pdo->prepare('DELETE FROM elements WHERE page_id = ?');
             $stmt->execute([$pageId]);
             
-            // Inserir novos elementos
+            // 4. Inserir novos elementos
             $stmt = $this->pdo->prepare('
                 INSERT INTO elements (page_id, type, content, pos_x, pos_y, width, height, styles)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)
