@@ -451,18 +451,32 @@
                     el.style.height = (data.height || 50) + 'px';
                     break;
                     
-                case 'image':
-                    const img = document.createElement('img');
-                    img.src = data.content || 'https://placehold.co/200x150/4a90d9/white?text=Imagem';
-                    img.alt = 'imagem';
-                    img.style.cssText = 'width: 100%; height: 100%; object-fit: cover;';
-                    img.onerror = () => {
-                        img.src = 'https://placehold.co/200x150/cccccc/666666?text=URL+Inválida';
-                    };
-                    el.appendChild(img);
-                    el.style.width = (data.width || 200) + 'px';
-                    el.style.height = (data.height || 150) + 'px';
-                    break;
+               case 'image':
+    const img = document.createElement('img');
+    const imageUrl = data.content || 'https://placehold.co/200x150/4a90d9/white?text=Imagem';
+    img.src = imageUrl;
+    img.alt = 'imagem';
+    img.style.cssText = 'width: 100%; height: 100%; object-fit: cover;';
+    img.onerror = () => {
+        // Manter a URL original mesmo se falhar
+        img.style.display = 'none';
+        const placeholder = document.createElement('div');
+        placeholder.style.cssText = 'width: 100%; height: 100%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center; color: white; font-size: 14px; text-align: center; padding: 10px;';
+        placeholder.innerHTML = '<i class="fas fa-image" style="font-size: 32px; margin-bottom: 10px; display: block;"></i>Imagem<br><small style="font-size: 10px;">Clique para editar URL</small>';
+        placeholder.onclick = () => {
+            const newUrl = prompt('Cole a URL da imagem:', imageUrl);
+            if (newUrl) {
+                img.src = newUrl;
+                img.style.display = 'block';
+                placeholder.remove();
+            }
+        };
+        el.appendChild(placeholder);
+    };
+    el.appendChild(img);
+    el.style.width = (data.width || 200) + 'px';
+    el.style.height = (data.height || 150) + 'px';
+    break;
                     
                 case 'button':
                     const btn = document.createElement('button');
