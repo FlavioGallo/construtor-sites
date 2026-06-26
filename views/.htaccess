@@ -1,0 +1,12 @@
+RewriteEngine On
+
+# Redirecionar tudo para index.php (exceto arquivos existentes)
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^(.*)$ index.php [QSA,L]
+
+# Proteger arquivos sensíveis
+<FilesMatch "\.(env|log|sql|md)$">
+    Order allow,deny
+    Deny from all
+</FilesMatch>
