@@ -79,12 +79,12 @@ if (strpos($uri, 'api/') === 0) {
         exit;
     }
     
-    // Save elements
-    if ($uri === 'api/save-elements' && $method === 'POST') {
-        $controller = new PageController($pdo);
-        $controller->saveElements();
-        exit;
-    }
+   // Save elements
+if ($uri === 'api/save-elements' && $method === 'POST') {
+    $controller = new PageController($pdo);
+    $controller->saveElements();
+    exit;
+}
     
     http_response_code(404);
     echo json_encode(['error' => 'Endpoint não encontrado']);
