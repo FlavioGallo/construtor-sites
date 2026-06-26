@@ -299,6 +299,18 @@
             <button class="btn-confirm" style="width: 100%; margin-bottom: 15px;" onclick="openMediaLibrary()">
                 <i class="fas fa-folder-open"></i> Abrir Biblioteca de Mídia
             </button>
+            
+            <!-- Upload direto do computador -->
+            <div style="margin-top: 20px; padding-top: 20px; border-top: 2px solid #e0e0e0;">
+                <p style="font-size: 12px; color: #666; margin-bottom: 10px;">
+                    Ou faça upload de uma imagem do seu computador:
+                </p>
+                <input type="file" id="directUpload" accept="image/*" style="display: none;">
+                <button class="btn-confirm" style="width: 100%;" onclick="document.getElementById('directUpload').click()">
+                    <i class="fas fa-upload"></i> Escolher Arquivo
+                </button>
+            </div>
+            
             <div class="modal-buttons">
                 <button class="btn-cancel" onclick="closeModal('imageModal')">Cancelar</button>
                 <button class="btn-confirm" onclick="confirmImage()">Adicionar</button>
@@ -346,7 +358,7 @@
     <div class="modal" id="mapModal">
         <div class="modal-content">
             <div class="modal-header">
-                <h3>️ Adicionar Mapa</h3>
+                <h3>🗺️ Adicionar Mapa</h3>
                 <button class="close-modal" onclick="closeModal('mapModal')">&times;</button>
             </div>
             <input type="text" id="mapAddress" placeholder="Endereço ou coordenadas...">
@@ -364,7 +376,7 @@
     <div class="modal" id="socialModal">
         <div class="modal-content">
             <div class="modal-header">
-                <h3> Redes Sociais</h3>
+                <h3>🔗 Redes Sociais</h3>
                 <button class="close-modal" onclick="closeModal('socialModal')">&times;</button>
             </div>
             <label>Facebook:</label>
@@ -451,32 +463,31 @@
                     el.style.height = (data.height || 50) + 'px';
                     break;
                     
-               case 'image':
-    const img = document.createElement('img');
-    const imageUrl = data.content || 'https://placehold.co/200x150/4a90d9/white?text=Imagem';
-    img.src = imageUrl;
-    img.alt = 'imagem';
-    img.style.cssText = 'width: 100%; height: 100%; object-fit: cover;';
-    img.onerror = () => {
-        // Manter a URL original mesmo se falhar
-        img.style.display = 'none';
-        const placeholder = document.createElement('div');
-        placeholder.style.cssText = 'width: 100%; height: 100%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center; color: white; font-size: 14px; text-align: center; padding: 10px;';
-        placeholder.innerHTML = '<i class="fas fa-image" style="font-size: 32px; margin-bottom: 10px; display: block;"></i>Imagem<br><small style="font-size: 10px;">Clique para editar URL</small>';
-        placeholder.onclick = () => {
-            const newUrl = prompt('Cole a URL da imagem:', imageUrl);
-            if (newUrl) {
-                img.src = newUrl;
-                img.style.display = 'block';
-                placeholder.remove();
-            }
-        };
-        el.appendChild(placeholder);
-    };
-    el.appendChild(img);
-    el.style.width = (data.width || 200) + 'px';
-    el.style.height = (data.height || 150) + 'px';
-    break;
+                case 'image':
+                    const img = document.createElement('img');
+                    const imageUrl = data.content || 'https://placehold.co/200x150/4a90d9/white?text=Imagem';
+                    img.src = imageUrl;
+                    img.alt = 'imagem';
+                    img.style.cssText = 'width: 100%; height: 100%; object-fit: cover;';
+                    img.onerror = () => {
+                        img.style.display = 'none';
+                        const placeholder = document.createElement('div');
+                        placeholder.style.cssText = 'width: 100%; height: 100%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center; color: white; font-size: 14px; text-align: center; padding: 10px; cursor: pointer;';
+                        placeholder.innerHTML = '<i class="fas fa-image" style="font-size: 32px; margin-bottom: 10px; display: block;"></i>Imagem<br><small style="font-size: 10px;">Clique para editar URL</small>';
+                        placeholder.onclick = () => {
+                            const newUrl = prompt('Cole a URL da imagem:', imageUrl);
+                            if (newUrl) {
+                                img.src = newUrl;
+                                img.style.display = 'block';
+                                placeholder.remove();
+                            }
+                        };
+                        el.appendChild(placeholder);
+                    };
+                    el.appendChild(img);
+                    el.style.width = (data.width || 200) + 'px';
+                    el.style.height = (data.height || 150) + 'px';
+                    break;
                     
                 case 'button':
                     const btn = document.createElement('button');
@@ -603,8 +614,11 @@
         function confirmImage() {
             const url = document.getElementById('imageUrl').value.trim();
             closeModal('imageModal');
+            
             if (url) {
                 createElement('image', { content: url });
+            } else {
+                createElement('image', { content: '' });
             }
         }
         
@@ -741,6 +755,34 @@
                 alert('❌ Erro de conexão: ' + err.message);
             });
         }
+        
+        // Upload direto do computador
+        document.getElementById('directUpload').addEventListener('change', async function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            
+            const formData = new FormData();
+            formData.append('file', file);
+            
+            try {
+                const response = await fetch('/api/upload-simple', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    closeModal('imageModal');
+                    createElement('image', { content: result.url });
+                    alert('✅ Imagem enviada com sucesso!');
+                } else {
+                    alert('❌ Erro: ' + result.error);
+                }
+            } catch (error) {
+                alert('❌ Erro ao enviar: ' + error.message);
+            }
+        });
     </script>
 
 </body>
