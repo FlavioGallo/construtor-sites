@@ -1,26 +1,29 @@
 <?php
-// Desabilitar output de erro HTML
+// Desabilitar display de erros HTML
 error_reporting(0);
 ini_set('display_errors', 0);
 
+// Forçar JSON
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: POST, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type');
 
-// Tratar preflight request
+// Tratar preflight
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(200);
     exit;
 }
 
 try {
+    // Verificar método
     if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
         http_response_code(405);
         echo json_encode(['success' => false, 'error' => 'Método não permitido']);
         exit;
     }
 
+    // Verificar arquivo
     if (!isset($_FILES['file']) || $_FILES['file']['error'] !== UPLOAD_ERR_OK) {
         $errorMessages = [
             UPLOAD_ERR_INI_SIZE => 'Arquivo muito grande (limite do servidor)',
@@ -70,7 +73,7 @@ try {
         }
     }
 
-    // Gerar nome único e seguro
+    // Gerar nome único
     $extension = pathinfo($file['name'], PATHINFO_EXTENSION);
     $filename = 'img_' . uniqid() . '_' . time() . '.' . strtolower($extension);
     $filepath = $uploadDir . $filename;
