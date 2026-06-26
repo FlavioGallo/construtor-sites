@@ -217,7 +217,7 @@
                 el.style.height = '50px';
             } else if (type === 'image') {
                 const img = document.createElement('img');
-                img.src = imageUrl || 'https://via.placeholder.com/200x150';
+                img.src = imageUrl || 'https://placehold.co/200x150/4a90d9/white?text=Imagem';
                 img.alt = 'imagem';
                 img.onerror = () => {
                     img.src = 'https://via.placeholder.com/200x150?text=URL+Inválida';
