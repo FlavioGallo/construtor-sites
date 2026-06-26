@@ -1,45 +1,78 @@
 <?php
+// Desabilitar output de erro HTML
+error_reporting(0);
+ini_set('display_errors', 0);
+
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
-header('Access-Control-Allow-Methods: POST');
+header('Access-Control-Allow-Methods: POST, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type');
+
+// Tratar preflight request
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    http_response_code(200);
+    exit;
+}
 
 try {
     if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-        throw new Exception('Método não permitido');
+        http_response_code(405);
+        echo json_encode(['success' => false, 'error' => 'Método não permitido']);
+        exit;
     }
 
-    if (!isset($_FILES['file'])) {
-        throw new Exception('Nenhum arquivo enviado');
+    if (!isset($_FILES['file']) || $_FILES['file']['error'] !== UPLOAD_ERR_OK) {
+        $errorMessages = [
+            UPLOAD_ERR_INI_SIZE => 'Arquivo muito grande (limite do servidor)',
+            UPLOAD_ERR_FORM_SIZE => 'Arquivo muito grande (limite do formulário)',
+            UPLOAD_ERR_PARTIAL => 'Upload parcial',
+            UPLOAD_ERR_NO_FILE => 'Nenhum arquivo enviado',
+            UPLOAD_ERR_NO_TMP_DIR => 'Pasta temporária não encontrada',
+            UPLOAD_ERR_CANT_WRITE => 'Erro ao escrever arquivo',
+            UPLOAD_ERR_EXTENSION => 'Extensão PHP bloqueou o upload'
+        ];
+        
+        $errorCode = isset($_FILES['file']) ? $_FILES['file']['error'] : UPLOAD_ERR_NO_FILE;
+        $errorMessage = $errorMessages[$errorCode] ?? 'Erro desconhecido no upload';
+        
+        http_response_code(400);
+        echo json_encode(['success' => false, 'error' => $errorMessage]);
+        exit;
     }
 
     $file = $_FILES['file'];
     
-    // Validar tipo
-    $allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
-    $fileInfo = new finfo(FILEINFO_MIME_TYPE);
-    $mimeType = $fileInfo->file($file['tmp_name']);
+    // Validar tipo MIME real
+    $finfo = new finfo(FILEINFO_MIME_TYPE);
+    $mimeType = $finfo->file($file['tmp_name']);
     
+    $allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
     if (!in_array($mimeType, $allowedTypes)) {
-        throw new Exception('Tipo de arquivo não permitido. Use JPG, PNG, GIF ou WebP');
+        http_response_code(400);
+        echo json_encode(['success' => false, 'error' => 'Tipo de arquivo não permitido. Use JPG, PNG, GIF ou WebP']);
+        exit;
     }
     
     // Validar tamanho (10MB)
     if ($file['size'] > 10 * 1024 * 1024) {
-        throw new Exception('Arquivo muito grande (máx 10MB)');
+        http_response_code(400);
+        echo json_encode(['success' => false, 'error' => 'Arquivo muito grande (máx 10MB)']);
+        exit;
     }
 
     // Criar pasta uploads
     $uploadDir = __DIR__ . '/../uploads/';
     if (!file_exists($uploadDir)) {
         if (!mkdir($uploadDir, 0755, true)) {
-            throw new Exception('Não foi possível criar pasta de uploads');
+            http_response_code(500);
+            echo json_encode(['success' => false, 'error' => 'Não foi possível criar pasta de uploads']);
+            exit;
         }
     }
 
-    // Gerar nome único
+    // Gerar nome único e seguro
     $extension = pathinfo($file['name'], PATHINFO_EXTENSION);
-    $filename = 'img_' . uniqid() . '_' . time() . '.' . $extension;
+    $filename = 'img_' . uniqid() . '_' . time() . '.' . strtolower($extension);
     $filepath = $uploadDir . $filename;
 
     // Mover arquivo
@@ -51,17 +84,21 @@ try {
             'success' => true,
             'url' => $url,
             'filename' => $file['name'],
+            'size' => $file['size'],
+            'type' => $mimeType,
             'message' => 'Upload realizado com sucesso!'
         ]);
         exit;
     } else {
-        throw new Exception('Erro ao salvar arquivo');
+        http_response_code(500);
+        echo json_encode(['success' => false, 'error' => 'Erro ao salvar arquivo no servidor']);
+        exit;
     }
 
 } catch (Exception $e) {
-    http_response_code(400);
+    http_response_code(500);
     echo json_encode([
         'success' => false,
-        'error' => $e->getMessage()
+        'error' => 'Erro interno: ' . $e->getMessage()
     ]);
 }
