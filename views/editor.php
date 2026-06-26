@@ -400,6 +400,43 @@
         let undoStack = [];
         let redoStack = [];
 
+        // Função para converter URLs comuns em URLs diretas de imagem
+        function convertToDirectUrl(url) {
+            if (!url) return url;
+            
+            // Imgur
+            if (url.includes('imgur.com')) {
+                if (url.includes('/a/') || url.includes('/gallery/')) {
+                    return url; // Não pode converter álbum
+                }
+                const imgId = url.split('/').pop().split('?')[0];
+                if (!imgId.includes('.')) {
+                    return `https://i.imgur.com/${imgId}.jpg`;
+                }
+            }
+            
+            // Google Drive
+            if (url.includes('drive.google.com')) {
+                const fileId = url.match(/\/d\/([^/]+)/)?.[1];
+                if (fileId) {
+                    return `https://drive.google.com/uc?export=view&id=${fileId}`;
+                }
+            }
+            
+            // Dropbox
+            if (url.includes('dropbox.com')) {
+                return url.replace('?dl=0', '?dl=1');
+            }
+            
+            // OneDrive
+            if (url.includes('onedrive.live.com') || url.includes('1drv.ms')) {
+                return url; // OneDrive não tem conversão simples
+            }
+            
+            // Retorna a URL original se não souber converter
+            return url;
+        }
+
         function addElement(type) {
             switch(type) {
                 case 'image':
@@ -465,25 +502,60 @@
                     
                 case 'image':
                     const img = document.createElement('img');
-                    const imageUrl = data.content || 'https://placehold.co/200x150/4a90d9/white?text=Imagem';
-                    img.src = imageUrl;
-                    img.alt = 'imagem';
-                    img.style.cssText = 'width: 100%; height: 100%; object-fit: cover;';
-                    img.onerror = () => {
-                        img.style.display = 'none';
-                        const placeholder = document.createElement('div');
-                        placeholder.style.cssText = 'width: 100%; height: 100%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center; color: white; font-size: 14px; text-align: center; padding: 10px; cursor: pointer;';
-                        placeholder.innerHTML = '<i class="fas fa-image" style="font-size: 32px; margin-bottom: 10px; display: block;"></i>Imagem<br><small style="font-size: 10px;">Clique para editar URL</small>';
-                        placeholder.onclick = () => {
-                            const newUrl = prompt('Cole a URL da imagem:', imageUrl);
-                            if (newUrl) {
-                                img.src = newUrl;
-                                img.style.display = 'block';
-                                placeholder.remove();
+                    let imageUrl = data.content || '';
+                    
+                    // Se tem URL, usar; senão, placeholder
+                    if (imageUrl) {
+                        // Tentar converter URL comum para direta
+                        const directUrl = convertToDirectUrl(imageUrl);
+                        img.src = directUrl;
+                        img.alt = 'imagem';
+                        img.style.cssText = 'width: 100%; height: 100%; object-fit: cover;';
+                        
+                        // Se falhar, tentar URL original
+                        img.onerror = () => {
+                            if (directUrl !== imageUrl) {
+                                img.src = imageUrl;
+                                img.onerror = () => {
+                                    // Se ainda falhar, mostrar placeholder clicável
+                                    img.style.display = 'none';
+                                    const placeholder = document.createElement('div');
+                                    placeholder.style.cssText = 'width: 100%; height: 100%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center; color: white; font-size: 14px; text-align: center; padding: 10px; cursor: pointer;';
+                                    placeholder.innerHTML = '<i class="fas fa-image" style="font-size: 32px; margin-bottom: 10px; display: block;"></i>Imagem<br><small style="font-size: 10px;">Clique para editar URL</small>';
+                                    placeholder.onclick = () => {
+                                        const newUrl = prompt('Cole a URL da imagem:', imageUrl);
+                                        if (newUrl) {
+                                            img.src = convertToDirectUrl(newUrl);
+                                            img.style.display = 'block';
+                                            placeholder.remove();
+                                        }
+                                    };
+                                    el.appendChild(placeholder);
+                                };
+                            } else {
+                                // Manter placeholder clicável
+                                img.style.display = 'none';
+                                const placeholder = document.createElement('div');
+                                placeholder.style.cssText = 'width: 100%; height: 100%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center; color: white; font-size: 14px; text-align: center; padding: 10px; cursor: pointer;';
+                                placeholder.innerHTML = '<i class="fas fa-image" style="font-size: 32px; margin-bottom: 10px; display: block;"></i>Imagem<br><small style="font-size: 10px;">Clique para editar URL</small>';
+                                placeholder.onclick = () => {
+                                    const newUrl = prompt('Cole a URL da imagem:', imageUrl);
+                                    if (newUrl) {
+                                        img.src = convertToDirectUrl(newUrl);
+                                        img.style.display = 'block';
+                                        placeholder.remove();
+                                    }
+                                };
+                                el.appendChild(placeholder);
                             }
                         };
-                        el.appendChild(placeholder);
-                    };
+                    } else {
+                        // Placeholder padrão
+                        img.src = 'https://placehold.co/200x150/4a90d9/white?text=Imagem';
+                        img.alt = 'imagem';
+                        img.style.cssText = 'width: 100%; height: 100%; object-fit: cover;';
+                    }
+                    
                     el.appendChild(img);
                     el.style.width = (data.width || 200) + 'px';
                     el.style.height = (data.height || 150) + 'px';
@@ -756,89 +828,89 @@
             });
         }
         
-      // Upload direto do computador
-document.getElementById('directUpload').addEventListener('change', async function(e) {
-    const file = e.target.files[0];
-    if (!file) return;
-    
-    // Validar tamanho antes de enviar (10MB)
-    if (file.size > 10 * 1024 * 1024) {
-        alert('❌ Arquivo muito grande! Máximo 10MB');
-        return;
-    }
-    
-    // Validar tipo
-    if (!file.type.startsWith('image/')) {
-        alert('❌ Selecione apenas imagens!');
-        return;
-    }
-    
-    const formData = new FormData();
-    formData.append('file', file);
-    
-    // Mostrar loading
-    const uploadBtn = this;
-    const originalText = uploadBtn.innerHTML;
-    uploadBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Enviando...';
-    uploadBtn.disabled = true;
-    
-    try {
-        const response = await fetch('/api/upload-simple', {
-            method: 'POST',
-            body: formData
+        // Upload direto do computador
+        document.getElementById('directUpload').addEventListener('change', async function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            
+            // Validar tamanho antes de enviar (10MB)
+            if (file.size > 10 * 1024 * 1024) {
+                alert('❌ Arquivo muito grande! Máximo 10MB');
+                return;
+            }
+            
+            // Validar tipo
+            if (!file.type.startsWith('image/')) {
+                alert('❌ Selecione apenas imagens!');
+                return;
+            }
+            
+            const formData = new FormData();
+            formData.append('file', file);
+            
+            // Mostrar loading
+            const uploadBtn = this;
+            const originalText = uploadBtn.innerHTML;
+            uploadBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Enviando...';
+            uploadBtn.disabled = true;
+            
+            try {
+                const response = await fetch('/api/upload-simple', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                // Verificar se a resposta é JSON
+                const contentType = response.headers.get('content-type');
+                if (!contentType || !contentType.includes('application/json')) {
+                    const text = await response.text();
+                    console.error('Resposta do servidor (não-JSON):', text);
+                    throw new Error('Servidor retornou erro. Verifique se o Railway está estável.');
+                }
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    closeModal('imageModal');
+                    createElement('image', { content: result.url });
+                    showNotification('✅ Imagem enviada com sucesso!');
+                } else {
+                    alert('❌ Erro: ' + (result.error || 'Erro desconhecido'));
+                }
+            } catch (error) {
+                console.error('Erro detalhado:', error);
+                alert('❌ Erro ao enviar imagem\n\n' + error.message + '\n\n💡 Dica: Tente usar uma URL de imagem em vez de upload.');
+            } finally {
+                // Restaurar botão
+                uploadBtn.innerHTML = originalText;
+                uploadBtn.disabled = false;
+                // Limpar input
+                e.target.value = '';
+            }
         });
-        
-        // Verificar se a resposta é JSON
-        const contentType = response.headers.get('content-type');
-        if (!contentType || !contentType.includes('application/json')) {
-            const text = await response.text();
-            console.error('Resposta do servidor (não-JSON):', text);
-            throw new Error('Servidor retornou erro. Verifique se o Railway está estável.');
-        }
-        
-        const result = await response.json();
-        
-        if (result.success) {
-            closeModal('imageModal');
-            createElement('image', { content: result.url });
-            showNotification('✅ Imagem enviada com sucesso!');
-        } else {
-            alert('❌ Erro: ' + (result.error || 'Erro desconhecido'));
-        }
-    } catch (error) {
-        console.error('Erro detalhado:', error);
-        alert('❌ Erro ao enviar imagem\n\n' + error.message + '\n\n💡 Dica: Tente usar uma URL de imagem em vez de upload.');
-    } finally {
-        // Restaurar botão
-        uploadBtn.innerHTML = originalText;
-        uploadBtn.disabled = false;
-        // Limpar input
-        e.target.value = '';
-    }
-});
 
-// Função de notificação
-function showNotification(message) {
-    const div = document.createElement('div');
-    div.style.cssText = `
-        position: fixed;
-        top: 20px;
-        right: 20px;
-        background: #27ae60;
-        color: white;
-        padding: 15px 25px;
-        border-radius: 8px;
-        box-shadow: 0 5px 20px rgba(0,0,0,0.2);
-        z-index: 10000;
-        animation: slideIn 0.3s ease;
-    `;
-    div.textContent = message;
-    document.body.appendChild(div);
-    
-    setTimeout(() => {
-        div.remove();
-    }, 3000);
-}
+        // Função de notificação
+        function showNotification(message) {
+            const div = document.createElement('div');
+            div.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                background: #27ae60;
+                color: white;
+                padding: 15px 25px;
+                border-radius: 8px;
+                box-shadow: 0 5px 20px rgba(0,0,0,0.2);
+                z-index: 10000;
+                animation: slideIn 0.3s ease;
+            `;
+            div.textContent = message;
+            document.body.appendChild(div);
+            
+            setTimeout(() => {
+                div.remove();
+            }, 3000);
+        }
     </script>
 
 </body>
