@@ -1,8 +1,5 @@
 <?php
-session_start();
 header('Content-Type: application/json');
-
-// Permitir CORS se necessário
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: POST');
 header('Access-Control-Allow-Headers: Content-Type');
@@ -20,7 +17,10 @@ try {
     
     // Validar tipo
     $allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
-    if (!in_array($file['type'], $allowedTypes)) {
+    $fileInfo = new finfo(FILEINFO_MIME_TYPE);
+    $mimeType = $fileInfo->file($file['tmp_name']);
+    
+    if (!in_array($mimeType, $allowedTypes)) {
         throw new Exception('Tipo de arquivo não permitido. Use JPG, PNG, GIF ou WebP');
     }
     
@@ -44,6 +44,7 @@ try {
 
     // Mover arquivo
     if (move_uploaded_file($file['tmp_name'], $filepath)) {
+        chmod($filepath, 0644);
         $url = '/uploads/' . $filename;
         
         echo json_encode([
@@ -52,6 +53,7 @@ try {
             'filename' => $file['name'],
             'message' => 'Upload realizado com sucesso!'
         ]);
+        exit;
     } else {
         throw new Exception('Erro ao salvar arquivo');
     }
