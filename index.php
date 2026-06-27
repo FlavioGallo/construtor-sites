@@ -27,7 +27,7 @@ if (strpos($uri, 'api/') === 0) {
         exit;
     }
     
-    if ($uri === 'api/auth/logout' && $method === 'POST') {
+    if ($uri === 'api/auth/logout' && ($method === 'POST' || $method === 'GET')) {
         $controller = new AuthController($pdo);
         $controller->logout();
         exit;
@@ -51,7 +51,6 @@ if (strpos($uri, 'api/') === 0) {
     }
     
     if (preg_match('/^api\/sites\/(\d+)$/', $uri, $matches) && $method === 'DELETE') {
-        $_GET['id'] = $matches[1];
         require_once __DIR__ . '/api/sites.php';
         exit;
     }
@@ -74,20 +73,34 @@ if (strpos($uri, 'api/') === 0) {
     }
     
     if (preg_match('/^api\/media\/(\d+)$/', $uri, $matches) && $method === 'DELETE') {
-        $_GET['id'] = $matches[1];
         require_once __DIR__ . '/api/media.php';
         exit;
     }
     
-   // Save elements
-if ($uri === 'api/save-elements' && $method === 'POST') {
-    $controller = new PageController($pdo);
-    $controller->saveElements();
-    exit;
-}
+    // Upload simples
+    if ($uri === 'api/upload-simple' && $method === 'POST') {
+        require_once __DIR__ . '/api/upload-simple.php';
+        exit;
+    }
     
+    // Save elements - ESTA É A ROTA QUE ESTAVA FALTANDO!
+    if ($uri === 'api/save-elements' && $method === 'POST') {
+        $controller = new PageController($pdo);
+        $controller->saveElements();
+        exit;
+    }
+    
+    // Get elements
+    if (preg_match('/^api\/elements\/(\d+)$/', $uri, $matches) && $method === 'GET') {
+        $controller = new PageController($pdo);
+        $elements = $controller->getElements($matches[1]);
+        echo json_encode($elements);
+        exit;
+    }
+    
+    // 404 para API
     http_response_code(404);
-    echo json_encode(['error' => 'Endpoint não encontrado']);
+    echo json_encode(['error' => 'Endpoint não encontrado: ' . $uri]);
     exit;
 }
 
@@ -112,7 +125,7 @@ if ($uri === 'dashboard') {
     exit;
 }
 
-if ($uri === 'media-library') {
+if ($uri === 'media-library' || $uri === 'media-library/') {
     include __DIR__ . '/views/media-library.php';
     exit;
 }
@@ -137,4 +150,4 @@ if ($siteSlug) {
 
 // 404
 http_response_code(404);
-echo "Página não encontrada.";
+echo "Página não encontrada: " . $uri;
