@@ -400,41 +400,60 @@
         let undoStack = [];
         let redoStack = [];
 
-        // Função para converter URLs comuns em URLs diretas de imagem
+        // Função para converter URLs comuns em URLs diretas de imagem usando proxy
         function convertToDirectUrl(url) {
             if (!url) return url;
+            
+            // Usar proxy weserv.nl para garantir que QUALQUER URL funcione
+            // Este proxy converte qualquer URL em imagem direta e contorna CORS/ORB
+            
+            // Se já for imagem direta, usar o proxy para otimizar
+            if (url.match(/\.(jpg|jpeg|png|gif|webp|svg|bmp)(\?.*)?$/i)) {
+                return `https://images.weserv.nl/?url=${encodeURIComponent(url)}&w=800&h=600&fit=cover`;
+            }
             
             // Imgur
             if (url.includes('imgur.com')) {
                 if (url.includes('/a/') || url.includes('/gallery/')) {
-                    return url; // Não pode converter álbum
+                    return `https://images.weserv.nl/?url=${encodeURIComponent(url)}`;
                 }
                 const imgId = url.split('/').pop().split('?')[0];
                 if (!imgId.includes('.')) {
-                    return `https://i.imgur.com/${imgId}.jpg`;
+                    return `https://images.weserv.nl/?url=https://i.imgur.com/${imgId}.jpg&w=800&h=600&fit=cover`;
                 }
+                return `https://images.weserv.nl/?url=${encodeURIComponent(url)}&w=800&h=600&fit=cover`;
+            }
+            
+            // Google Search/Images
+            if (url.includes('google.com/search') || url.includes('google.com.br/search')) {
+                const imgMatch = url.match(/imgurl=([^&]+)/);
+                if (imgMatch) {
+                    return `https://images.weserv.nl/?url=${encodeURIComponent(decodeURIComponent(imgMatch[1]))}&w=800&h=600&fit=cover`;
+                }
+                return `https://images.weserv.nl/?url=${encodeURIComponent(url)}`;
             }
             
             // Google Drive
             if (url.includes('drive.google.com')) {
                 const fileId = url.match(/\/d\/([^/]+)/)?.[1];
                 if (fileId) {
-                    return `https://drive.google.com/uc?export=view&id=${fileId}`;
+                    return `https://images.weserv.nl/?url=https://drive.google.com/uc?export=view&id=${fileId}&w=800&h=600&fit=cover`;
                 }
             }
             
             // Dropbox
             if (url.includes('dropbox.com')) {
-                return url.replace('?dl=0', '?dl=1');
+                const directUrl = url.replace('?dl=0', '?dl=1');
+                return `https://images.weserv.nl/?url=${encodeURIComponent(directUrl)}&w=800&h=600&fit=cover`;
             }
             
-            // OneDrive
-            if (url.includes('onedrive.live.com') || url.includes('1drv.ms')) {
-                return url; // OneDrive não tem conversão simples
+            // Facebook/Instagram (usar proxy)
+            if (url.includes('facebook.com') || url.includes('instagram.com')) {
+                return `https://images.weserv.nl/?url=${encodeURIComponent(url)}&w=800&h=600&fit=cover`;
             }
             
-            // Retorna a URL original se não souber converter
-            return url;
+            // Para qualquer outra URL, usar proxy
+            return `https://images.weserv.nl/?url=${encodeURIComponent(url)}&w=800&h=600&fit=cover`;
         }
 
         function addElement(type) {
@@ -504,36 +523,24 @@
                     const img = document.createElement('img');
                     let imageUrl = data.content || '';
                     
-                    // Se tem URL, usar; senão, placeholder
                     if (imageUrl) {
-                        // Tentar converter URL comum para direta
-                        const directUrl = convertToDirectUrl(imageUrl);
-                        img.src = directUrl;
+                        // Sempre usar proxy para garantir funcionamento
+                        const proxiedUrl = convertToDirectUrl(imageUrl);
+                        img.src = proxiedUrl;
                         img.alt = 'imagem';
                         img.style.cssText = 'width: 100%; height: 100%; object-fit: cover;';
+                        img.crossOrigin = 'anonymous';
                         
-                        // Se falhar, tentar URL original
+                        // Se falhar, tentar sem proxy e mostrar placeholder se ainda falhar
+                        let retryCount = 0;
                         img.onerror = () => {
-                            if (directUrl !== imageUrl) {
+                            retryCount++;
+                            
+                            if (retryCount === 1 && proxiedUrl !== imageUrl) {
+                                // Tentar URL original
                                 img.src = imageUrl;
-                                img.onerror = () => {
-                                    // Se ainda falhar, mostrar placeholder clicável
-                                    img.style.display = 'none';
-                                    const placeholder = document.createElement('div');
-                                    placeholder.style.cssText = 'width: 100%; height: 100%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center; color: white; font-size: 14px; text-align: center; padding: 10px; cursor: pointer;';
-                                    placeholder.innerHTML = '<i class="fas fa-image" style="font-size: 32px; margin-bottom: 10px; display: block;"></i>Imagem<br><small style="font-size: 10px;">Clique para editar URL</small>';
-                                    placeholder.onclick = () => {
-                                        const newUrl = prompt('Cole a URL da imagem:', imageUrl);
-                                        if (newUrl) {
-                                            img.src = convertToDirectUrl(newUrl);
-                                            img.style.display = 'block';
-                                            placeholder.remove();
-                                        }
-                                    };
-                                    el.appendChild(placeholder);
-                                };
-                            } else {
-                                // Manter placeholder clicável
+                            } else if (retryCount === 2) {
+                                // Mostrar placeholder clicável
                                 img.style.display = 'none';
                                 const placeholder = document.createElement('div');
                                 placeholder.style.cssText = 'width: 100%; height: 100%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center; color: white; font-size: 14px; text-align: center; padding: 10px; cursor: pointer;';
@@ -550,7 +557,6 @@
                             }
                         };
                     } else {
-                        // Placeholder padrão
                         img.src = 'https://placehold.co/200x150/4a90d9/white?text=Imagem';
                         img.alt = 'imagem';
                         img.style.cssText = 'width: 100%; height: 100%; object-fit: cover;';
@@ -833,13 +839,11 @@
             const file = e.target.files[0];
             if (!file) return;
             
-            // Validar tamanho antes de enviar (10MB)
             if (file.size > 10 * 1024 * 1024) {
                 alert('❌ Arquivo muito grande! Máximo 10MB');
                 return;
             }
             
-            // Validar tipo
             if (!file.type.startsWith('image/')) {
                 alert('❌ Selecione apenas imagens!');
                 return;
@@ -848,7 +852,6 @@
             const formData = new FormData();
             formData.append('file', file);
             
-            // Mostrar loading
             const uploadBtn = this;
             const originalText = uploadBtn.innerHTML;
             uploadBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Enviando...';
@@ -860,7 +863,6 @@
                     body: formData
                 });
                 
-                // Verificar se a resposta é JSON
                 const contentType = response.headers.get('content-type');
                 if (!contentType || !contentType.includes('application/json')) {
                     const text = await response.text();
@@ -881,15 +883,12 @@
                 console.error('Erro detalhado:', error);
                 alert('❌ Erro ao enviar imagem\n\n' + error.message + '\n\n💡 Dica: Tente usar uma URL de imagem em vez de upload.');
             } finally {
-                // Restaurar botão
                 uploadBtn.innerHTML = originalText;
                 uploadBtn.disabled = false;
-                // Limpar input
                 e.target.value = '';
             }
         });
 
-        // Função de notificação
         function showNotification(message) {
             const div = document.createElement('div');
             div.style.cssText = `
